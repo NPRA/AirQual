@@ -148,8 +148,10 @@ void readSense()
   Serial.println(tempValC,DEC);
   Serial.print("Humidity:");
   Serial.println(humVal,DEC);
-  char result[70] = "";
+  char result[80] = "";
   dtostrf(tempValC, 4, 1, result);
+  result[strlen(result)] = ',';
+  dtostrf(humVal, 4, 1, &result[strlen(result)]);
   result[strlen(result)] = ',';
 
   Serial.println("PMS Data:");
