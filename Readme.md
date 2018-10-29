@@ -22,3 +22,10 @@ _present / describe code here_
 
 We wanted to experiment with some air quality sensors and check whether they gave a "good enough" result in comparison with much more expensive "high end" products.
 And also measure both indoor an outdoor air quality. The outdoor air quality is very dependent on the season - winter season has a lot of small dangerous particles due to cars with dudded winter tires.
+
+
+# Author
+
+- Christian Skjetne (project / hardware / software)
+- Tomas Levin (project / hardware / software)
+- Asbjørn A. Fellinghaug (documentation only)
