@@ -10,12 +10,16 @@ The air quality measurement device is using the PMS5003 high precision sensor.
 ![device1](./imgs/device1_cropped.jpg)
 ![device2](./imgs/device2_c.jpg)
 
+## Hardware
+
+This project consists of the following hardware components:
+
+- PMS5003 air quality sensor
+-
 
 ## Code
 
-The code for this project is an Arduino sketch file.
-
-_present / describe code here_
+The code for this project is an Arduino sketch file. It's very simple and straightforward. Have a loop at [AirQual.ino](./AirQual.ino).
 
 
 ## Purpose
