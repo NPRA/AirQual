@@ -19,6 +19,10 @@
  * Read more on the Exploratory Engineering team at
  * https://exploratory.engineering/
  */
+
+// Note: The 'TelenorNBIoT.h' can be obtained from this repo: https://github.com/ExploratoryEngineering/ArduinoNBIoT/
+//       It's highly recommended to use the latest and greatest version.
+
 #include "TelenorNBIoT.h"
 #include <SHT1x.h>
 int datapin=18,clkpin=19; //blue, yellow
@@ -35,6 +39,8 @@ int datapin=18,clkpin=19; //blue, yellow
 #include <Wire.h>
 #include "SSD1306Ascii.h"
 #include "SSD1306AsciiWire.h"
+#include <Udp.h>
+
 
 //PMS sensor (no, not that kind of pms...)
 HardwareSerial pmsSerial(2);
@@ -50,6 +56,9 @@ struct pms5003data {
 struct pms5003data data;
 struct pms5003data tempdata;
 
+//
+char *npra_ip = "212.125.231.179";
+
 TelenorNBIoT nbiot(RX_PIN, TX_PIN, 7000);
 SSD1306AsciiWire oled;
 
@@ -61,34 +70,34 @@ boolean readPMSdata(Stream *s) {
   if (! s->available()) {
     return false;
   }
-  
+
   // Read a byte at a time until we get to the special '0x42' start-byte
   if (s->peek() != 0x42) {
     s->read();
     return false;
   }
- 
+
   // Now read all 32 bytes
   if (s->available() < 32) {
     return false;
   }
-    
-  uint8_t buffer[32];    
+
+  uint8_t buffer[32];
   uint16_t sum = 0;
   s->readBytes(buffer, 32);
- 
+
   // get checksum ready
   for (uint8_t i=0; i<30; i++) {
     sum += buffer[i];
   }
- 
+
   /* debugging
   for (uint8_t i=2; i<32; i++) {
     Serial.print("0x"); Serial.print(buffer[i], HEX); Serial.print(", ");
   }
   Serial.println();
   */
-  
+
   // The data comes in endian'd, this solves it so it works on all platforms
   uint16_t buffer_u16[15];
   for (uint8_t i=0; i<15; i++) {
@@ -98,7 +107,7 @@ boolean readPMSdata(Stream *s) {
 
   // put it into a nice struct :)
   memcpy((void *)&tempdata, (void *)buffer_u16, 30);
- 
+
   if (sum != tempdata.checksum) {
     Serial.println("Checksum failure");
     s->flush();
@@ -106,7 +115,7 @@ boolean readPMSdata(Stream *s) {
   }
 
   data = tempdata;
-  
+
   // success!
   return true;
 }
@@ -115,6 +124,7 @@ void readSense()
 {
   tempValC = sht1x.readTemperatureC();
   humVal = sht1x.readHumidity();
+
   // Prepare upstream data transmission at the next possible time.
   oled.clear();
   oled.println("Waiting for pms5003");
@@ -140,11 +150,9 @@ void readSense()
       printTimerStart = millis();
     }
   }
-  
-  //yieldDelay(20000); //warmup time
-  
-  
-  Serial.print("Temperature in celcius: "); 
+
+
+  Serial.print("Temperature in celcius: ");
   Serial.println(tempValC,DEC);
   Serial.print("Humidity:");
   Serial.println(humVal,DEC);
@@ -176,7 +184,7 @@ void readSense()
     Serial.print("Particles > 50 um / 0.1L air:"); Serial.println(data.particles_100um);
     Serial.println("---------------------------------------");
   }
-  
+
   itoa(data.particles_03um, &result[strlen(result)],10);
   result[strlen(result)] = ',';
   itoa(data.particles_05um, &result[strlen(result)],10);
@@ -195,10 +203,10 @@ void readSense()
   result[strlen(result)] = ',';
   itoa(data.pm100_env, &result[strlen(result)],10);
   result[strlen(result)] = '\0';
-  
-  //SEND DATA HERE
+
+  // Sending data through NB-IoT to our self-hosted UDP server.
   int timeOut = 0;
-  while( !nbiot.sendTo("212.125.231.179",50120,result, strlen(result)) && timeOut < 20)
+  while(!nbiot.sendTo(npra_ip, 50120, result, strlen(result)) && timeOut < 20)
   {
     oled.clear();
     oled.println(F("Sending message"));
@@ -206,8 +214,8 @@ void readSense()
     timeOut++;
   }
   Serial.println(result);
-  
-  digitalWrite(setpin, LOW); //put pms sensor to sleep
+
+  digitalWrite(setpin, LOW); // put pms sensor to sleep
 }
 
 void setup() {
@@ -216,12 +224,16 @@ void setup() {
   pmsSerial.begin(9600, SERIAL_8N1, PMS_RX, PMS_TX);
   pinMode(setpin,OUTPUT);
   digitalWrite(setpin, LOW);
+
+  // If no Serial is available, then loop forever..
   Serial.begin(9600);
   while (!Serial) ;
 
+  // Start nbiot, Wire and oled screen
   nbiot.begin();
-  Wire.begin();                
+  Wire.begin();
   oled.begin(&Adafruit128x32, I2C_ADDRESS);
+
   oled.setFont(System5x7);
   oled.clear();
   oled.println("Welcome to");
@@ -234,10 +246,10 @@ char databuf[32];
 uint16_t tmplen = 32;
 uint16_t port = 50120;
 
-void loop() 
+void loop()
 {
   int timeOut = 0;
-  if(AUTO)
+  if (AUTO)
   {
     while( !nbiot.connected() && timeOut < 20)
     {
@@ -249,7 +261,7 @@ void loop()
     timeOut = 0;
     oled.println(F("Module is online"));
     delay(500);
-    
+
     while( !nbiot.createSocket() && timeOut < 20)
     {
       oled.clear();
@@ -260,20 +272,17 @@ void loop()
     timeOut = 0;
     oled.println(F("Socket created"));
     delay(500);
-    
-    /*while( !nbiot.sendTo("212.125.231.179",50120,"Hello", 5) && timeOut < 20)
-    {
-      oled.clear();
-      oled.println(F("Sending message"));
-      delay(500);
-      timeOut++;
-    }*/
+
     readSense();
     oled.println(F("Data sent"));
     delay(500);
     oled.clear();
     oled.println(F("Shutting down"));
     delay(500);
+
+    // We are cutting the power after the 'DONEPIN' is triggered
+    // in the loop below. This is an efficient power saving
+    // strategy. The board will boot again in a certain amount of time.
     while (1) {
       digitalWrite(DONEPIN, HIGH);
       delay(2000);
@@ -282,4 +291,3 @@ void loop()
     }
   }
 }
-
