@@ -241,11 +241,6 @@ void setup() {
   oled.println("TranTek Air Qual");
 }
 
-unsigned long long tmp;
-char buf[16];
-char databuf[32];
-uint16_t tmplen = 32;
-
 // Main loop
 void loop()
 {
