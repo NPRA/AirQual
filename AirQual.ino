@@ -56,8 +56,9 @@ struct pms5003data {
 struct pms5003data data;
 struct pms5003data tempdata;
 
-//
+// NPRA specific (CHANGE TO SUITE YOUR SETUP)
 char *npra_ip = "212.125.231.179";
+uint16_t port = 50120;
 
 TelenorNBIoT nbiot(RX_PIN, TX_PIN, 7000);
 SSD1306AsciiWire oled;
@@ -206,7 +207,7 @@ void readSense()
 
   // Sending data through NB-IoT to our self-hosted UDP server.
   int timeOut = 0;
-  while(!nbiot.sendTo(npra_ip, 50120, result, strlen(result)) && timeOut < 20)
+  while(!nbiot.sendTo(npra_ip, port, result, strlen(result)) && timeOut < 20)
   {
     oled.clear();
     oled.println(F("Sending message"));
@@ -244,8 +245,8 @@ unsigned long long tmp;
 char buf[16];
 char databuf[32];
 uint16_t tmplen = 32;
-uint16_t port = 50120;
 
+// Main loop
 void loop()
 {
   int timeOut = 0;
